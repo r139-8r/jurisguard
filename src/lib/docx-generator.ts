@@ -96,7 +96,7 @@ export async function generateSafeDocx({
     );
 
     // Process document text
-    let processedText = originalText;
+    const processedText = originalText;
     const paragraphs = processedText.split('\n\n');
 
     paragraphs.forEach((para, index) => {
@@ -109,7 +109,7 @@ export async function generateSafeDocx({
         let containsFlag = false;
         let currentPara = para;
 
-        for (const [original, suggested] of replacements) {
+        for (const [original] of replacements) {
             if (currentPara.includes(original)) {
                 containsFlag = true;
                 break;
