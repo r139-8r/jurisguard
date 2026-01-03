@@ -23,11 +23,15 @@ export async function POST(request: NextRequest) {
 
         // 3. Parse and validate request body
         const body = await request.json();
+        console.log('[Analyze] Request body keys:', Object.keys(body));
+        console.log('[Analyze] documentText length:', body.documentText?.length || 0);
+
         const validation = validateRequest(analyzeRequestSchema, body);
 
         if (!validation.success) {
+            console.error('[Analyze] Validation failed:', validation.errors);
             return NextResponse.json(
-                { error: 'Invalid request', details: validation.errors },
+                { error: `Invalid request: ${validation.errors.join(', ')}` },
                 { status: 400 }
             );
         }
