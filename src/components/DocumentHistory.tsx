@@ -9,6 +9,7 @@ interface Document {
     id: string;
     file_name: string;
     created_at: string;
+    raw_text: string | null;
     analyses: {
         id: string;
         risk_score: number;
@@ -25,7 +26,7 @@ interface DocumentHistoryProps {
         risk_level: 'Low' | 'Medium' | 'High';
         summary: string;
         flagged_clauses: unknown[];
-    }, fileName: string) => void;
+    }, fileName: string, documentText: string) => void;
 }
 
 export default function DocumentHistory({ userId, onSelectDocument }: DocumentHistoryProps) {
@@ -49,6 +50,7 @@ export default function DocumentHistory({ userId, onSelectDocument }: DocumentHi
                     id,
                     file_name,
                     created_at,
+                    raw_text,
                     analyses (
                         id,
                         risk_score,
@@ -177,7 +179,7 @@ export default function DocumentHistory({ userId, onSelectDocument }: DocumentHi
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ delay: index * 0.05 }}
-                                onClick={() => onSelectDocument(analysis as { risk_score: number; risk_level: 'Low' | 'Medium' | 'High'; summary: string; flagged_clauses: unknown[] }, doc.file_name)}
+                                onClick={() => onSelectDocument(analysis as { risk_score: number; risk_level: 'Low' | 'Medium' | 'High'; summary: string; flagged_clauses: unknown[] }, doc.file_name, doc.raw_text || '')}
                             >
                                 <div className="history-card-header">
                                     <div className="history-card-title">

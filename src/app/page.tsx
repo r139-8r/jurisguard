@@ -356,9 +356,10 @@ export default function Home() {
               {user && (
                 <DocumentHistory
                   userId={user.id}
-                  onSelectDocument={(savedAnalysis, savedFileName) => {
+                  onSelectDocument={(savedAnalysis, savedFileName, savedDocumentText) => {
                     setAnalysis(savedAnalysis as Analysis);
                     setFileName(savedFileName);
+                    setDocumentText(savedDocumentText);
                   }}
                 />
               )}
