@@ -10,9 +10,9 @@ function getGroq(): Groq {
     return groqClient;
 }
 
-// Model configuration
+// Model configuration - Using currently supported Groq models
 const MODELS = {
-    FAST_LANE: 'qwen-qwq-32b', // Fast, good for simple docs
+    FAST_LANE: 'llama-3.1-8b-instant', // Fast, good for simple docs (replaced decommissioned qwen-qwq-32b)
     DEEP_DIVE: 'llama-3.3-70b-versatile', // Powerful, for complex analysis
     ROUTER: 'llama-3.1-8b-instant', // Quick classification
 };

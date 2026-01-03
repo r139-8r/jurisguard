@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, FileText, CheckCircle, AlertCircle, FileUp, Briefcase, Users, Handshake, ScrollText } from 'lucide-react';
 
 interface DocumentUploadProps {
     onUpload: (file: File, text: string) => void;
@@ -84,14 +86,28 @@ export default function DocumentUpload({ onUpload, isLoading }: DocumentUploadPr
         }
     };
 
+    const documentTypes = [
+        { icon: ScrollText, label: 'NDAs & Confidentiality' },
+        { icon: Briefcase, label: 'Service Agreements' },
+        { icon: Users, label: 'Employment Contracts' },
+        { icon: Handshake, label: 'Freelance Agreements' },
+    ];
+
     return (
-        <div className="upload-container">
-            <div
+        <motion.div
+            className="upload-container"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
+            <motion.div
                 className={`upload-zone ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => !isLoading && fileInputRef.current?.click()}
+                whileHover={!isLoading ? { scale: 1.01 } : {}}
+                whileTap={!isLoading ? { scale: 0.99 } : {}}
             >
                 <input
                     ref={fileInputRef}
@@ -101,40 +117,99 @@ export default function DocumentUpload({ onUpload, isLoading }: DocumentUploadPr
                     className="hidden"
                 />
 
-                {isLoading || extracting ? (
-                    <div className="loading-state">
-                        <div className="breath-animation"></div>
-                        <p className="loading-text">
-                            {extracting ? 'Reading document...' : 'Analyzing clauses...'}
-                        </p>
-                        <p className="loading-subtext">Ensuring you are protected</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="upload-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                            </svg>
-                        </div>
-                        <p className="upload-text">
-                            {fileName ? fileName : 'Drop your contract here'}
-                        </p>
-                        <p className="upload-subtext">
-                            PDF, Word, or text file • Max 10MB
-                        </p>
-                    </>
-                )}
-            </div>
+                <AnimatePresence mode="wait">
+                    {isLoading || extracting ? (
+                        <motion.div
+                            key="loading"
+                            className="loading-state"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="breath-animation" />
+                            <motion.p
+                                className="loading-text"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                {extracting ? 'Reading document...' : 'Analyzing clauses...'}
+                            </motion.p>
+                            <motion.p
+                                className="loading-subtext"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3 }}
+                            >
+                                Ensuring you are protected
+                            </motion.p>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="idle"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <motion.div
+                                className="upload-icon"
+                                whileHover={{ scale: 1.1, rotate: 5 }}
+                                transition={{ type: "spring", stiffness: 400 }}
+                            >
+                                {isDragging ? (
+                                    <FileUp size={32} />
+                                ) : (
+                                    <Upload size={32} />
+                                )}
+                            </motion.div>
+                            <p className="upload-text">
+                                {fileName ? (
+                                    <motion.span
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+                                    >
+                                        <FileText size={20} />
+                                        {fileName}
+                                    </motion.span>
+                                ) : isDragging ? (
+                                    'Drop it here!'
+                                ) : (
+                                    'Drop your contract here'
+                                )}
+                            </p>
+                            <p className="upload-subtext">
+                                PDF, Word, or text file • Max 10MB
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
 
-            <div className="upload-tips">
+            <motion.div
+                className="upload-tips"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+            >
                 <h4>Supported documents:</h4>
                 <ul>
-                    <li>📄 NDAs & Confidentiality Agreements</li>
-                    <li>📋 Service Agreements & MSAs</li>
-                    <li>👤 Employment Contracts</li>
-                    <li>🤝 Freelance & Consulting Agreements</li>
+                    {documentTypes.map((doc, index) => (
+                        <motion.li
+                            key={doc.label}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 + index * 0.1 }}
+                            whileHover={{ x: 4 }}
+                        >
+                            <doc.icon size={18} style={{ color: 'var(--deep-sage)' }} />
+                            {doc.label}
+                        </motion.li>
+                    ))}
                 </ul>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }

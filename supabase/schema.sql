@@ -132,3 +132,61 @@ CREATE TRIGGER update_documents_updated_at
 -- Allowed operation: SELECT
 -- Policy definition:
 --   (bucket_id = 'legal-docs') AND (auth.uid()::text = (storage.foldername(name))[1])
+
+
+-- ============================================
+-- 6. PORTFOLIOS TABLE (for grouping documents)
+-- ============================================
+CREATE TABLE IF NOT EXISTS portfolios (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE portfolios ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own portfolios" ON portfolios
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own portfolios" ON portfolios
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own portfolios" ON portfolios
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own portfolios" ON portfolios
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Add portfolio_id to documents table
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL;
+
+
+-- ============================================
+-- 7. USER PREFERENCES TABLE (for data residency)
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    data_residency TEXT DEFAULT 'global' CHECK (data_residency IN ('global', 'eu', 'us', 'in', 'uk', 'sg', 'au')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own preferences" ON user_preferences
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own preferences" ON user_preferences
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own preferences" ON user_preferences
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Index for portfolios
+CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_portfolio_id ON documents(portfolio_id);

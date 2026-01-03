@@ -1,6 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    AlertTriangle,
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    Copy,
+    Check,
+    FileText,
+    Plus,
+    Lightbulb,
+    AlertCircle,
+    Scale,
+    Shield,
+    ArrowLeftRight
+} from 'lucide-react';
+import DiffViewer from './DiffViewer';
 
 interface FlaggedClause {
     id: string;
@@ -25,9 +42,36 @@ interface RiskDashboardProps {
     onNewUpload: () => void;
 }
 
+// Animated counter hook
+function useAnimatedCounter(end: number, duration: number = 1000) {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        let startTime: number;
+        let animationFrame: number;
+
+        const animate = (timestamp: number) => {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            setCount(Math.floor(progress * end));
+
+            if (progress < 1) {
+                animationFrame = requestAnimationFrame(animate);
+            }
+        };
+
+        animationFrame = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animationFrame);
+    }, [end, duration]);
+
+    return count;
+}
+
 export default function RiskDashboard({ analysis, fileName, onNewUpload }: RiskDashboardProps) {
     const [expandedClauses, setExpandedClauses] = useState<Set<string>>(new Set());
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [diffClause, setDiffClause] = useState<FlaggedClause | null>(null);
+    const animatedScore = useAnimatedCounter(analysis.risk_score, 1500);
 
     const toggleClause = (id: string) => {
         const next = new Set(expandedClauses);
@@ -60,116 +104,265 @@ export default function RiskDashboard({ analysis, fileName, onNewUpload }: RiskD
     };
 
     return (
-        <div className="dashboard-container">
+        <motion.div
+            className="dashboard-container"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+        >
             {/* Header */}
-            <div className="dashboard-header">
+            <motion.div
+                className="dashboard-header"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+            >
                 <div className="doc-info">
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, delay: 0.2 }}
+                    >
+                        <FileText size={24} style={{ color: 'var(--deep-sage)' }} />
+                    </motion.div>
                     <h2>{fileName}</h2>
-                    <span className="route-badge">{analysis.route_used || 'ANALYZED'}</span>
+                    <motion.span
+                        className="route-badge"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        {analysis.route_used || 'ANALYZED'}
+                    </motion.span>
                 </div>
-                <button className="btn-secondary" onClick={onNewUpload}>
-                    + New Document
-                </button>
-            </div>
+                <motion.button
+                    className="btn-secondary"
+                    onClick={onNewUpload}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    <Plus size={18} />
+                    New Document
+                </motion.button>
+            </motion.div>
 
             {/* Risk Score */}
-            <div className="score-section">
-                <div
-                    className="score-circle"
-                    style={{ background: getScoreGradient(analysis.risk_score) }}
+            <motion.div
+                className="score-section"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+            >
+                <div className="score-circle-wrapper">
+                    <motion.div
+                        className="score-circle"
+                        style={{ background: getScoreGradient(analysis.risk_score) }}
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                    >
+                        <span className="score-value">{animatedScore}</span>
+                        <span className="score-label">Safety Score</span>
+                    </motion.div>
+                </div>
+                <motion.div
+                    className="score-details"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
                 >
-                    <span className="score-value">{analysis.risk_score}</span>
-                    <span className="score-label">Safety Score</span>
-                </div>
-                <div className="score-details">
-                    <div className="risk-badge" style={{ backgroundColor: getRiskColor(analysis.risk_level) }}>
+                    <motion.div
+                        className="risk-badge"
+                        style={{ backgroundColor: getRiskColor(analysis.risk_level) }}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, delay: 0.5 }}
+                    >
+                        <Shield size={16} />
                         {analysis.risk_level} Risk
-                    </div>
+                    </motion.div>
                     <p className="summary">{analysis.summary}</p>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
 
             {/* Red Flags */}
-            {analysis.flagged_clauses.length > 0 && (
-                <div className="flags-section">
-                    <h3>
-                        <span className="flag-icon">⚠️</span>
-                        Flagged Clauses ({analysis.flagged_clauses.length})
-                    </h3>
+            <AnimatePresence>
+                {analysis.flagged_clauses.length > 0 && (
+                    <motion.div
+                        className="flags-section"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <h3>
+                            <AlertTriangle size={22} style={{ color: 'var(--terracotta)' }} />
+                            Flagged Clauses
+                            <span className="flag-count">{analysis.flagged_clauses.length}</span>
+                        </h3>
 
-                    <div className="flags-list">
-                        {analysis.flagged_clauses.map((clause) => (
-                            <div
-                                key={clause.id}
-                                className={`flag-card ${expandedClauses.has(clause.id) ? 'expanded' : ''}`}
-                            >
-                                <div
-                                    className="flag-header"
-                                    onClick={() => toggleClause(clause.id)}
+                        <div className="flags-list">
+                            {analysis.flagged_clauses.map((clause, index) => (
+                                <motion.div
+                                    key={clause.id}
+                                    className={`flag-card ${expandedClauses.has(clause.id) ? 'expanded' : ''}`}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.4 + index * 0.1 }}
                                 >
-                                    <div className="flag-type">
-                                        <span
-                                            className="risk-dot"
-                                            style={{ backgroundColor: getRiskColor(clause.risk_rating) }}
-                                        />
-                                        {clause.type}
+                                    <div
+                                        className="flag-header"
+                                        onClick={() => toggleClause(clause.id)}
+                                    >
+                                        <div className="flag-type">
+                                            <motion.span
+                                                className="risk-dot"
+                                                style={{ backgroundColor: getRiskColor(clause.risk_rating) }}
+                                                animate={{
+                                                    boxShadow: [
+                                                        `0 0 0 0 ${getRiskColor(clause.risk_rating)}40`,
+                                                        `0 0 0 8px ${getRiskColor(clause.risk_rating)}00`
+                                                    ]
+                                                }}
+                                                transition={{ duration: 2, repeat: Infinity }}
+                                            />
+                                            {clause.type}
+                                        </div>
+                                        <div className="flag-actions">
+                                            <span className="risk-tag" style={{ color: getRiskColor(clause.risk_rating) }}>
+                                                {clause.risk_rating}
+                                            </span>
+                                            <motion.button
+                                                className="expand-btn"
+                                                whileHover={{ scale: 1.1 }}
+                                                whileTap={{ scale: 0.9 }}
+                                            >
+                                                {expandedClauses.has(clause.id) ? (
+                                                    <ChevronUp size={18} />
+                                                ) : (
+                                                    <ChevronDown size={18} />
+                                                )}
+                                            </motion.button>
+                                        </div>
                                     </div>
-                                    <div className="flag-actions">
-                                        <span className="risk-tag" style={{ color: getRiskColor(clause.risk_rating) }}>
-                                            {clause.risk_rating}
-                                        </span>
-                                        <button className="expand-btn">
-                                            {expandedClauses.has(clause.id) ? '−' : '+'}
-                                        </button>
-                                    </div>
-                                </div>
 
-                                {expandedClauses.has(clause.id) && (
-                                    <div className="flag-details">
-                                        <div className="clause-text">
-                                            <div className="text-header">
-                                                <span>Original Text</span>
-                                                <button
-                                                    className="copy-btn"
-                                                    onClick={() => copyToClipboard(clause.original_text, clause.id)}
+                                    <AnimatePresence>
+                                        {expandedClauses.has(clause.id) && (
+                                            <motion.div
+                                                className="flag-details"
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <div className="clause-text">
+                                                    <div className="text-header">
+                                                        <span>Original Text</span>
+                                                        <motion.button
+                                                            className="copy-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                copyToClipboard(clause.original_text, clause.id);
+                                                            }}
+                                                            whileHover={{ scale: 1.05 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                        >
+                                                            {copiedId === clause.id ? (
+                                                                <>
+                                                                    <Check size={14} />
+                                                                    Copied
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Copy size={14} />
+                                                                    Copy
+                                                                </>
+                                                            )}
+                                                        </motion.button>
+                                                    </div>
+                                                    <blockquote>{clause.original_text}</blockquote>
+                                                </div>
+
+                                                <div className="explanation">
+                                                    <strong>
+                                                        <AlertCircle size={14} />
+                                                        Why it&apos;s risky:
+                                                    </strong>
+                                                    <p>{clause.explanation}</p>
+                                                </div>
+
+                                                <div className="suggestion">
+                                                    <strong>
+                                                        <Lightbulb size={14} />
+                                                        Suggested Fix:
+                                                    </strong>
+                                                    <p>{clause.suggested_edit}</p>
+                                                </div>
+
+                                                <motion.button
+                                                    className="view-diff-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDiffClause(clause);
+                                                    }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    whileTap={{ scale: 0.98 }}
                                                 >
-                                                    {copiedId === clause.id ? '✓ Copied' : 'Copy'}
-                                                </button>
-                                            </div>
-                                            <blockquote>{clause.original_text}</blockquote>
-                                        </div>
-
-                                        <div className="explanation">
-                                            <strong>Why it&apos;s risky:</strong>
-                                            <p>{clause.explanation}</p>
-                                        </div>
-
-                                        <div className="suggestion">
-                                            <strong>💡 Suggested Fix:</strong>
-                                            <p>{clause.suggested_edit}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+                                                    <ArrowLeftRight size={16} />
+                                                    View Side-by-Side Diff
+                                                </motion.button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {analysis.flagged_clauses.length === 0 && (
-                <div className="no-flags">
-                    <span className="check-icon">✓</span>
+                <motion.div
+                    className="no-flags"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    <motion.span
+                        className="check-icon"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, delay: 0.4 }}
+                    >
+                        <CheckCircle2 size={28} />
+                    </motion.span>
                     <p>No significant risks detected</p>
-                </div>
+                </motion.div>
             )}
 
             {/* Disclaimer */}
-            <div className="disclaimer">
+            <motion.div
+                className="disclaimer"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+            >
+                <Scale size={20} style={{ color: 'var(--burnished-gold)', flexShrink: 0, marginTop: '2px' }} />
                 <p>
-                    ⚖️ <strong>Disclaimer:</strong> This is an AI-powered risk assessment, not legal advice.
+                    <strong>Disclaimer:</strong> This is an AI-powered risk assessment, not legal advice.
                     Consult a qualified attorney for important decisions.
                 </p>
-            </div>
-        </div>
+            </motion.div>
+
+            {/* Diff Viewer Modal */}
+            {diffClause && (
+                <DiffViewer
+                    originalText={diffClause.original_text}
+                    suggestedText={diffClause.suggested_edit}
+                    clauseType={diffClause.type}
+                    isOpen={!!diffClause}
+                    onClose={() => setDiffClause(null)}
+                />
+            )}
+        </motion.div>
     );
 }
