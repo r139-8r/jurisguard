@@ -55,9 +55,18 @@ export async function POST(request: NextRequest) {
         // 7. Save document and analysis to database (optional - graceful if tables don't exist)
         let savedDocumentId = documentId;
         try {
+            // Get the access token from the Authorization header
+            const authHeader = request.headers.get('Authorization');
+            const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
             const supabase = createClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    global: {
+                        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+                    },
+                }
             );
 
             // Get file name from request body if provided
