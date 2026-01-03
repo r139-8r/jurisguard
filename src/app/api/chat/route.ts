@@ -49,9 +49,29 @@ export async function POST(request: NextRequest) {
             answer,
         });
     } catch (error) {
-        console.error('Chat error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Chat error:', {
+            message: errorMessage,
+            name: error instanceof Error ? error.name : 'Unknown',
+        });
+
+        // Check for specific error types
+        if (errorMessage.includes('API key') || errorMessage.includes('401')) {
+            return NextResponse.json(
+                { success: false, error: 'AI service configuration error. Please contact support.' },
+                { status: 500 }
+            );
+        }
+
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+            return NextResponse.json(
+                { success: false, error: 'Too many requests. Please wait a moment and try again.' },
+                { status: 429 }
+            );
+        }
+
         return NextResponse.json(
-            { error: 'Failed to process question' },
+            { success: false, error: `Failed to process question: ${errorMessage}` },
             { status: 500 }
         );
     }

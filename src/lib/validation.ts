@@ -33,7 +33,7 @@ export const chatRequestSchema = z.object({
         .string()
         .min(1, 'Question cannot be empty')
         .max(2000, 'Question exceeds maximum length of 2,000 characters'),
-});
+}).passthrough();
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 

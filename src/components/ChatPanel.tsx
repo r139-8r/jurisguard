@@ -76,7 +76,9 @@ export default function ChatPanel({ documentText, analysisJson, isOpen, onToggle
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: data.answer || 'Sorry, I could not process that question.',
+                content: data.success
+                    ? (data.answer || 'I received your question but could not generate a response.')
+                    : (data.error || 'Sorry, I could not process that question.'),
                 timestamp: new Date(),
             };
 
