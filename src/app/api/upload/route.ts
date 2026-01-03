@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getClientIP } from '@/lib/auth';
-import { checkRateLimit, RATE_LIMITS, rateLimitExceeded } from '@/lib/ratelimit';
+import { checkRateLimit, rateLimitExceeded } from '@/lib/ratelimit';
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/validation';
 
 // Magic bytes for file type validation
@@ -103,10 +103,9 @@ export async function POST(request: NextRequest) {
             return errorResponse;
         }
 
-        // 2. Rate limiting
+        // 2. Rate limiting (using Upstash in production, in-memory in dev)
         const clientIP = getClientIP(request);
-        const rateLimitKey = `upload:${clientIP}`;
-        const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMITS.upload);
+        const rateLimit = await checkRateLimit(clientIP, 'upload');
 
         if (!rateLimit.success) {
             return rateLimitExceeded(rateLimit.resetIn);

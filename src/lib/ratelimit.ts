@@ -1,65 +1,110 @@
 import { NextResponse } from 'next/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
 /**
- * Simple in-memory rate limiter for Cloudflare Workers / Edge Runtime
- * Uses a sliding window algorithm
- * 
- * NOTE: For production with multiple workers, consider using:
- * - Cloudflare Durable Objects
- * - Upstash Redis (works with Cloudflare Workers)
- * - Cloudflare Workers KV with atomic counters
+ * Production-ready rate limiter using Upstash Redis
+ * Falls back to in-memory for local development
  */
+
+// Check if Upstash is configured
+const isUpstashConfigured = 
+    process.env.UPSTASH_REDIS_REST_URL && 
+    process.env.UPSTASH_REDIS_REST_TOKEN;
+
+// Upstash Redis client (only created if configured)
+const redis = isUpstashConfigured 
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL!,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+    : null;
+
+// Upstash rate limiters for different endpoints
+const upstashLimiters = redis ? {
+    analyze: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 requests per minute
+        analytics: true,
+        prefix: 'ratelimit:analyze',
+    }),
+    chat: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(30, '1 m'), // 30 requests per minute
+        analytics: true,
+        prefix: 'ratelimit:chat',
+    }),
+    upload: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(20, '1 m'), // 20 requests per minute
+        analytics: true,
+        prefix: 'ratelimit:upload',
+    }),
+} : null;
+
+// ============================================
+// In-memory fallback for local development
+// ============================================
 
 interface RateLimitEntry {
     count: number;
     resetTime: number;
 }
 
-// In-memory store (works for single instance, resets on cold start)
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Cleanup old entries periodically
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitStore.entries()) {
-        if (now > entry.resetTime) {
-            rateLimitStore.delete(key);
+// Cleanup old entries periodically (only in Node.js environment)
+if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+        const now = Date.now();
+        for (const [key, entry] of rateLimitStore.entries()) {
+            if (now > entry.resetTime) {
+                rateLimitStore.delete(key);
+            }
         }
-    }
-}, 60000); // Clean every minute
+    }, 60000);
+}
 
 export interface RateLimitConfig {
-    /** Maximum requests allowed in the window */
     maxRequests: number;
-    /** Time window in seconds */
     windowSeconds: number;
 }
 
 export interface RateLimitResult {
     success: boolean;
     remaining: number;
-    resetIn: number; // seconds until reset
+    resetIn: number;
 }
 
 /**
- * Check rate limit for a given identifier (usually IP + endpoint)
+ * Check rate limit using Upstash (production) or in-memory (development)
  */
-export function checkRateLimit(
+export async function checkRateLimit(
     identifier: string,
-    config: RateLimitConfig
-): RateLimitResult {
+    endpoint: 'analyze' | 'chat' | 'upload'
+): Promise<RateLimitResult> {
+    // Use Upstash in production
+    if (upstashLimiters) {
+        const limiter = upstashLimiters[endpoint];
+        const { success, remaining, reset } = await limiter.limit(identifier);
+        
+        return {
+            success,
+            remaining,
+            resetIn: Math.ceil((reset - Date.now()) / 1000),
+        };
+    }
+
+    // Fallback to in-memory for development
+    const config = RATE_LIMITS[endpoint];
     const now = Date.now();
     const windowMs = config.windowSeconds * 1000;
-    const key = identifier;
+    const key = `${endpoint}:${identifier}`;
 
     let entry = rateLimitStore.get(key);
 
-    // If no entry or window expired, create new entry
     if (!entry || now > entry.resetTime) {
-        entry = {
-            count: 1,
-            resetTime: now + windowMs,
-        };
+        entry = { count: 1, resetTime: now + windowMs };
         rateLimitStore.set(key, entry);
         return {
             success: true,
@@ -68,17 +113,14 @@ export function checkRateLimit(
         };
     }
 
-    // Check if over limit
     if (entry.count >= config.maxRequests) {
-        const resetIn = Math.ceil((entry.resetTime - now) / 1000);
         return {
             success: false,
             remaining: 0,
-            resetIn,
+            resetIn: Math.ceil((entry.resetTime - now) / 1000),
         };
     }
 
-    // Increment counter
     entry.count++;
     rateLimitStore.set(key, entry);
 
@@ -90,24 +132,12 @@ export function checkRateLimit(
 }
 
 /**
- * Rate limit configurations for different endpoints
+ * Rate limit configurations
  */
 export const RATE_LIMITS = {
-    // Document analysis - expensive AI operation
-    analyze: {
-        maxRequests: 10,
-        windowSeconds: 60, // 10 requests per minute
-    },
-    // Chat - less expensive
-    chat: {
-        maxRequests: 30,
-        windowSeconds: 60, // 30 requests per minute
-    },
-    // File upload
-    upload: {
-        maxRequests: 20,
-        windowSeconds: 60, // 20 requests per minute
-    },
+    analyze: { maxRequests: 10, windowSeconds: 60 },
+    chat: { maxRequests: 30, windowSeconds: 60 },
+    upload: { maxRequests: 20, windowSeconds: 60 },
 } as const;
 
 /**
@@ -127,4 +157,11 @@ export function rateLimitExceeded(resetIn: number): NextResponse {
             },
         }
     );
+}
+
+/**
+ * Check if Upstash is being used (for logging/debugging)
+ */
+export function isUsingUpstash(): boolean {
+    return !!upstashLimiters;
 }

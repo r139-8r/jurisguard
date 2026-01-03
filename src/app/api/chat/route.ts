@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatWithDocument } from '@/lib/groq';
 import { requireAuth, getClientIP } from '@/lib/auth';
-import { checkRateLimit, RATE_LIMITS, rateLimitExceeded } from '@/lib/ratelimit';
+import { checkRateLimit, rateLimitExceeded } from '@/lib/ratelimit';
 import { chatRequestSchema, validateRequest } from '@/lib/validation';
 import { redactPII } from '@/lib/pii-redactor';
 
@@ -13,10 +13,9 @@ export async function POST(request: NextRequest) {
             return errorResponse;
         }
 
-        // 2. Rate limiting
+        // 2. Rate limiting (using Upstash in production, in-memory in dev)
         const clientIP = getClientIP(request);
-        const rateLimitKey = `chat:${clientIP}`;
-        const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMITS.chat);
+        const rateLimit = await checkRateLimit(clientIP, 'chat');
 
         if (!rateLimit.success) {
             return rateLimitExceeded(rateLimit.resetIn);
