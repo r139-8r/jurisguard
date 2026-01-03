@@ -4,6 +4,7 @@ import { requireAuth, getClientIP } from '@/lib/auth';
 import { checkRateLimit, rateLimitExceeded } from '@/lib/ratelimit';
 import { analyzeRequestSchema, validateRequest } from '@/lib/validation';
 import { redactPII } from '@/lib/pii-redactor';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
     try {
@@ -51,14 +52,65 @@ export async function POST(request: NextRequest) {
         // 6. Analyze the document using the recommended model
         const analysis = await analyzeDocument(sanitizedText, routeDecision.recommended_route);
 
-        // 7. Return results with user ID from session (NOT from request body)
+        // 7. Save document and analysis to database (optional - graceful if tables don't exist)
+        let savedDocumentId = documentId;
+        try {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            // Get file name from request body if provided
+            const fileName = body.fileName || 'Untitled Document';
+
+            // Insert document record
+            const { data: docData, error: docError } = await supabase
+                .from('documents')
+                .insert({
+                    user_id: session!.user.id,
+                    file_name: fileName,
+                    file_path: `analyses/${session!.user.id}/${Date.now()}`,
+                    raw_text: documentText.substring(0, 10000), // Store first 10k chars
+                    file_size: documentText.length,
+                    mime_type: 'text/plain',
+                })
+                .select('id')
+                .single();
+
+            if (!docError && docData) {
+                savedDocumentId = docData.id;
+
+                // Insert analysis record
+                await supabase
+                    .from('analyses')
+                    .insert({
+                        document_id: docData.id,
+                        user_id: session!.user.id,
+                        risk_score: analysis.risk_score,
+                        risk_level: analysis.risk_level,
+                        summary: analysis.summary,
+                        flagged_clauses: analysis.flagged_clauses,
+                        route_used: routeDecision.recommended_route,
+                        routing_metadata: routeDecision,
+                    });
+
+                console.log('[Analyze] Saved document and analysis to database:', docData.id);
+            } else if (docError) {
+                console.log('[Analyze] Could not save to database (tables may not exist):', docError.message);
+            }
+        } catch (dbError) {
+            // Database save is optional - don't fail the request
+            console.log('[Analyze] Database save skipped:', dbError instanceof Error ? dbError.message : 'Unknown error');
+        }
+
+        // 8. Return results with user ID from session (NOT from request body)
         return NextResponse.json({
             success: true,
             routing: routeDecision,
             analysis: {
                 ...analysis,
                 route_used: routeDecision.recommended_route,
-                document_id: documentId,
+                document_id: savedDocumentId,
                 user_id: session!.user.id, // Secure: from authenticated session
             },
         });

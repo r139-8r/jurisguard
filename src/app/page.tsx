@@ -98,7 +98,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           documentText: text,
-          userId: user?.id,
+          fileName: file.name,
         }),
       });
 
