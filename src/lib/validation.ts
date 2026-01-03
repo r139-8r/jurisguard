@@ -15,7 +15,7 @@ export const analyzeRequestSchema = z.object({
         .string()
         .uuid('Invalid document ID format')
         .optional(),
-});
+}).passthrough(); // Allow extra fields like userId without failing validation
 
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 
