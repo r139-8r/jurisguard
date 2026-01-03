@@ -23,11 +23,16 @@ export async function POST(request: NextRequest) {
 
         // 3. Parse and validate request body
         const body = await request.json();
+        console.log('[Chat] Request body keys:', Object.keys(body));
+        console.log('[Chat] documentText length:', body.documentText?.length || 0);
+        console.log('[Chat] question:', body.question);
+
         const validation = validateRequest(chatRequestSchema, body);
 
         if (!validation.success) {
+            console.error('[Chat] Validation failed:', validation.errors);
             return NextResponse.json(
-                { error: 'Invalid request', details: validation.errors },
+                { success: false, error: `Invalid request: ${validation.errors.join(', ')}` },
                 { status: 400 }
             );
         }
