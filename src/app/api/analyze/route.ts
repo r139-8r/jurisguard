@@ -59,9 +59,39 @@ export async function POST(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error('Analysis error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : '';
+
+        console.error('Analysis error:', {
+            message: errorMessage,
+            stack: errorStack,
+            name: error instanceof Error ? error.name : 'Unknown',
+        });
+
+        // Check for specific error types
+        if (errorMessage.includes('API key') || errorMessage.includes('authentication') || errorMessage.includes('401')) {
+            return NextResponse.json(
+                { error: 'AI service configuration error. Please check API keys.' },
+                { status: 500 }
+            );
+        }
+
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+            return NextResponse.json(
+                { error: 'AI service rate limit exceeded. Please try again in a moment.' },
+                { status: 429 }
+            );
+        }
+
+        if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+            return NextResponse.json(
+                { error: 'Analysis timed out. Please try with a shorter document.' },
+                { status: 504 }
+            );
+        }
+
         return NextResponse.json(
-            { error: 'Failed to analyze document' },
+            { error: `Failed to analyze document: ${errorMessage}` },
             { status: 500 }
         );
     }
