@@ -1519,7 +1519,7 @@ blockquote {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  /* transform handled inline to prevent Framer Motion conflicts */
   width: 95%;
   max-width: 1000px;
   max-height: 85vh;

@@ -41,9 +41,15 @@ export default function DiffViewer({
                     {/* Modal */}
                     <motion.div
                         className="diff-modal"
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        style={{
+                            position: 'fixed',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                        }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                     >
                         {/* Header */}
