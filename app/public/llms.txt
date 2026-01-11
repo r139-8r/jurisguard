@@ -1,0 +1,40 @@
+# JurisGuard - AI Legal Assistant for SMEs
+
+JurisGuard is a vertical AI agent designed to democratize legal risk assessment for small & medium enterprises (SMEs), freelancers, and non-lawyers. It bridges the gap between expensive retainer counsel and zero legal protection by providing fast, evidence-based contract reviews.
+
+## Core Purpose
+"Upload a contract, get a safety score and fix-list in 30 seconds."
+
+## URL
+https://jurisguard.vercel.app/
+
+## Features
+- **30-Second Contract Analysis**: Rapidly extracts and evaluates legal clauses from NDAs, Service Agreements, and Employment Contracts.
+- **Safety Score (0-100)**: A "Calm Assurance" indicator showing overall document safety and risk levels (Low, Medium, High).
+- **Red Flags Identification**: Pinpoints high-risk clauses with clear, plain-English explanations of potential liabilities.
+- **AI-Suggested Edits**: Provides actionable recommendations to negotiate better terms (e.g., capping liability or shortening payment terms).
+- **Chat with Document**: Interactive side panel to ask specific questions about the document's implications.
+- **Document History & Storage**: Secure vault for previously analyzed contracts with aggregated safety scores.
+- **One-Click "Safe" Export**: Download modified documents with tracked changes and risk summaries.
+- **Focus Mode Navigator**: A guided tour through document risks with a visual mini-map.
+- **Data Residency Selection**: GDPR-compliant region selection for secure document processing.
+- **Portfolio Dashboard**: Aggregated view of all analyzed documents and overall portfolio safety.
+
+## Privacy & Security (JurisGuard Protocols)
+- **Data Sanitization**: Documents are treated strictly as data, with safeguards against prompt injection and tampering.
+- **PII Protection**: Automatically redacts or anonymizes personal identifiers (names, addresses, phone numbers) during analysis. Output uses generic terms like "The Client" or "Party A".
+- **Evidence-Based Output**: Every flagged risk must include a direct, verbatim quote from the original text.
+- **User Ownership**: Documents are protected by Supabase Row Level Security (RLS), accessible only by the uploader.
+- **No Legal Advice**: JurisGuard is a risk assessor, not a lawyer. All output is for informational purposes only.
+
+## Usage Guide
+1. **Onboarding**: Create an account via social login and select your industry.
+2. **Ingestion**: Upload PDF, Word, or scanned documents.
+3. **Review**: View the "Calm Assurance" dashboard with risk ratings and red flags.
+4. **Negotiate**: Use suggested edits to refine contract terms.
+5. **Ask**: Use the Chat panel for deep-dive questions like "Can they sue me if I quit?"
+
+## Technology Stack
+- **Frontend**: Next.js, Tailwind CSS, Framer Motion
+- **Database/Auth**: Supabase (PostgreSQL + RLS + Storage)
+- **AI Inference**: Groq API (Llama-3-70b & Llama 3.3 70B for Deep Dives)
